@@ -1,37 +1,30 @@
 import { ServerMessage, type LeaderMessage } from "common";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { ServerEventsContext } from "../providers/ServerEvents";
 
-export const Leader: React.FC = () => {
-  const [leader, setLeader] = useState<LeaderMessage | null>(null);
-
-  useEffect(() => {
-    // Create an EventSource connection to the server's /events endpoint
-    const eventSource = new EventSource("http://localhost:3000/events");
-
-    eventSource.onmessage = (event: MessageEvent<string>) => {
-      const message = JSON.parse(event.data) as ServerMessage;
-      switch (message.type) {
-        case "leader":
-          console.log("leader");
-          setLeader(message);
-          break;
-        default:
-          break;
-      }
-    };
-
-    // Clean up the event source when the component is unmounted
-    return () => {
-      eventSource.close();
-    };
-  }, []);
+const Leader: React.FC = () => {
+  const { leaderBoard } = useContext(ServerEventsContext);
 
   return (
-    <div className="flex flex-col gap-4 align-start justify-center">
-      <h1 className="text-2xl font-bold">Current leader</h1>
-      <p className="text-xl font-bold">{leader?.hash}</p>
-      <p className="text-xl font-bold">{leader?.nonce}</p>
-      <p className="text-xl font-bold">{leader?.prompt}</p>
-    </div>
+    <table className="table-auto">
+      <thead>
+        <tr>
+          <th className="px-4 py-2">Hash</th>
+          <th className="px-4 py-2">Nonce</th>
+          <th className="px-4 py-2">Prompt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {leaderBoard.map((leader: LeaderMessage) => (
+          <tr key={leader.hash}>
+            <td className="border px-4 py-2">{leader.hash}</td>
+            <td className="border px-4 py-2">{leader.nonce}</td>
+            <td className="border px-4 py-2">{leader.prompt}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 };
+
+export default Leader;

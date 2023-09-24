@@ -60,6 +60,8 @@ class Timer extends EventEmitter {
 // config
 const PORT = 3000;
 const duration = 5 * 60 * 1000;
+// just use a file as the "database"
+const dbFile = "./entries.csv";
 
 const app = express();
 
@@ -69,9 +71,6 @@ const app = express();
 //   prompt: string;
 //   response: string;
 // };
-
-// just use a file as the "database"
-const dbFile = "./entries.csv";
 
 // TODO handle restart from valid state and from a crash
 
@@ -96,15 +95,14 @@ const sendCurrentLeader = (client: Response) => {
   }
 };
 
-const sendCountdownReset = (client: Response) => {
+const sendCountdown = (client: Response, targetTime: number) => {
   client.write(
     `data:${JSON.stringify({
-      type: "reset-countdown",
-      milliseconds: duration,
+      type: "countdown",
+      targetTime,
     } as ServerMessage)}\n\n`
   );
-}
-
+};
 
 type State = {
   state: ChainState;
@@ -130,7 +128,7 @@ const initialState = (): State => {
     timer.reset();
 
     for (const client of clients) {
-      sendCountdownReset(client);
+      sendCountdown(client, Date.now() + timer.getTimeRemaining());
     }
   });
 
@@ -179,6 +177,10 @@ app.get("/events", (req: Request, res: Response) => {
       state.clients.splice(index, 1);
     }
   });
+
+  // Send the current leader and countdown
+  sendCurrentLeader(res);
+  sendCountdown(res, Date.now() + state.timer.getTimeRemaining());
 });
 
 type SubmitParams = {

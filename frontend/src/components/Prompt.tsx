@@ -5,7 +5,7 @@ import { bnToNetString, genesisHash } from "common";
 
 const dummyNonce = new BN(0);
 
-export const Prompt: React.FC = () => {
+const Prompt: React.FC = () => {
   const [prompt, setPrompt] = useState<string>("");
 
   const submit = useCallback(async () => {
@@ -42,3 +42,5 @@ export const Prompt: React.FC = () => {
     </div>
   );
 };
+
+export default Prompt;

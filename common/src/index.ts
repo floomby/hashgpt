@@ -110,7 +110,7 @@ export type LeaderMessage = {
 };
 
 export type CountdownMessage = {
-  milliseconds: number;
+  targetTime: number; // milliseconds since epoch
 };
 
 export type ServerMessage =
@@ -118,5 +118,5 @@ export type ServerMessage =
       type: "leader";
     } & LeaderMessage)
   | ({
-      type: "reset-countdown";
+      type: "countdown";
     } & CountdownMessage);
