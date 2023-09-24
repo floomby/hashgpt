@@ -1,0 +1,19 @@
+{
+  "name": "hashgpt",
+  "version": "1.0.0",
+  "description": "may the best hasher win",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "common"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.1"
+  },
+  "scripts": {
+    "dev": "concurrently \"yarn workspace frontend dev\" \"yarn workspace backend dev\""
+  }
+}

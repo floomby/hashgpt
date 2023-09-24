@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // This ensures compatibility with recent Node.js versions and modern browsers.
+    "module": "ESNext", // This tells TypeScript to generate code for Node.js.
+    "moduleResolution": "node", // This tells TypeScript to resolve modules like Node.js does.
+    "esModuleInterop": true, // Enables default imports for CommonJS modules.
+    "strict": true, // Enables all strict type checking options.
+    "declaration": true, // Generates corresponding '.d.ts' file.
+    "outDir": "./dist", // Redirect output structure to the 'dist' directory.
+    "rootDir": "./src", // Specify the root directory of input files.
+    "removeComments": true, // Removes comments from the output files.
+    "sourceMap": true, // Generate corresponding '.map' file.
+    "skipLibCheck": true, // Skip type checking of declaration files.
+    "forceConsistentCasingInFileNames": true, // Enforce consistent casing in file names.
+    "isolatedModules": true // Ensure that each file can be safely transpiled without relying on other imports.
+  },
+  "include": [
+    "src/**/*.ts" // Include all TypeScript files in 'src' directory.
+  ],
+  "exclude": [
+    "node_modules" // Exclude the node_modules directory.
+  ]
+}
