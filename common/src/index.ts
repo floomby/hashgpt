@@ -99,10 +99,6 @@ export function countLeadingZeroBits(hash: string) {
   return count;
 }
 
-export function bnToNetString(num: BN) {
-  return num.toString("hex").padStart(64, "0");
-}
-
 export type LeaderMessage = {
   hash: string;
   nonce: string;
@@ -113,10 +109,32 @@ export type CountdownMessage = {
   targetTime: number; // milliseconds since epoch
 };
 
+export type TokenMessage = {
+  tokenText: string;
+};
+
+export type MineableMessage = {
+  currentHash: string;
+  prevResponse: string;
+};
+
+export type AcceptedMessage = {
+  prompt: string;
+};
+
 export type ServerMessage =
   | ({
       type: "leader";
     } & LeaderMessage)
   | ({
       type: "countdown";
-    } & CountdownMessage);
+    } & CountdownMessage)
+  | ({
+      type: "token";
+    } & TokenMessage)
+  | ({
+      type: "mineable";
+    } & MineableMessage)
+  | ({
+      type: "accepted";
+    } & AcceptedMessage);

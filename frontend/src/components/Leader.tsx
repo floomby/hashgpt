@@ -6,7 +6,7 @@ const Leader: React.FC = () => {
   const { leaderBoard } = useContext(ServerEventsContext);
 
   return (
-    <table className="table-auto">
+    <table className="table-auto px-2">
       <thead>
         <tr>
           <th className="px-4 py-2">Hash</th>
