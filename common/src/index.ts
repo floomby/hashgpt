@@ -38,6 +38,8 @@ export function hashBlock(block: Block): string {
     paddingBytes,
   ]);
 
+  console.log(buffer);
+
   // hash buffer
   const hash = crypto.createHash("sha256");
   hash.update(buffer);
@@ -72,32 +74,32 @@ export function validateBlock(
   );
 }
 
-export function createChain(
-  data: Pick<Block, "prompt" | "prevResponse" | "nonce">[]
-) {
-  const blocks: Block[] = [];
+// export function createChain(
+//   data: Pick<Block, "prompt" | "prevResponse" | "nonce">[]
+// ) {
+//   const blocks: Block[] = [];
 
-  for (let i = 0; i < data.length; i++) {
-    const prevHash = i === 0 ? genesisHash : hashBlock(blocks[i - 1]);
-    blocks.push({ ...data[i], prevHash });
-  }
+//   for (let i = 0; i < data.length; i++) {
+//     const prevHash = i === 0 ? genesisHash : hashBlock(blocks[i - 1]);
+//     blocks.push({ ...data[i], prevHash });
+//   }
 
-  return blocks;
-}
+//   return blocks;
+// }
 
-export function countLeadingZeroBits(hash: string) {
-  const hashBN = new BN(hash, "hex");
-  const hashBits = hashBN.toString(2);
-  let count = 0;
-  for (let i = 0; i < hashBits.length; i++) {
-    if (hashBits[i] === "0") {
-      count++;
-    } else {
-      break;
-    }
-  }
-  return count;
-}
+// export function countLeadingZeroBits(hash: string) {
+//   const hashBN = new BN(hash, "hex");
+//   const hashBits = hashBN.toString(2);
+//   let count = 0;
+//   for (let i = 0; i < hashBits.length; i++) {
+//     if (hashBits[i] === "0") {
+//       count++;
+//     } else {
+//       break;
+//     }
+//   }
+//   return count;
+// }
 
 export type LeaderMessage = {
   hash: string;
