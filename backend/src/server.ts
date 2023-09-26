@@ -341,10 +341,11 @@ type SubmitParams = {
   prompt: string;
   nonce: string;
   prevHash: string;
+  expectedHash: string;
 };
 
 app.post("/submit", (req: Request, res: Response) => {
-  const { prompt, nonce, prevHash } = req.body as SubmitParams;
+  const { prompt, nonce, prevHash, expectedHash } = req.body as SubmitParams;
 
   // check the parameters are present
   if (!prompt || !nonce || !prevHash) {
@@ -374,6 +375,15 @@ app.post("/submit", (req: Request, res: Response) => {
     return res.status(400).json({ error: "PrevHash must be a hex string" });
   }
 
+  // check expectedHash is a hex string of length 64
+  if (
+    typeof expectedHash !== "string" ||
+    expectedHash.length !== 64 ||
+    !/^[0-9a-fA-F]+$/.test(expectedHash)
+  ) {
+    return res.status(400).json({ error: "ExpectedHash must be a hex string" });
+  }
+
   const nonceBN = new BN(nonce, "hex");
 
   const hash = hashBlock({
@@ -383,7 +393,12 @@ app.post("/submit", (req: Request, res: Response) => {
     prevResponse: state.prevResponse,
   });
 
-  const hashBN = new BN(hash, "hex");
+  console.log("hash: ", hash, " expectedHash: ", expectedHash);
+
+  // check the expected hash is correct
+  if (hash !== expectedHash) {
+    return res.status(400).json({ error: "Incorrect hash" });
+  }
 
   if (
     !validateBlockAgainstState(
@@ -395,6 +410,7 @@ app.post("/submit", (req: Request, res: Response) => {
       .status(400)
       .json({ error: `Invalid block - expected prevHash ${state.prevHash}` });
   }
+  const hashBN = new BN(hash, "hex");
 
   if (!state.candidateBlock) {
     state.candidateBlock = { hash: hashBN, nonce, prompt };

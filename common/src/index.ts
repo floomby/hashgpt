@@ -18,12 +18,14 @@ export function hashBlock(block: Block): string {
   const nonceBytes = Buffer.from(block.nonce.toArray("be", 32));
   const prevHashBytes = Buffer.from(block.prevHash, "hex");
   const promptBytes = Buffer.from(block.prompt, "utf8");
+  const separatorBytes = Buffer.from([0x00, 0x00]);
   const responseBytes = Buffer.from(block.prevResponse, "utf8");
 
   const length =
     nonceBytes.length +
     prevHashBytes.length +
     promptBytes.length +
+    separatorBytes.length +
     responseBytes.length;
 
   // pad buffer to 4 byte boundary with 0s
@@ -34,6 +36,7 @@ export function hashBlock(block: Block): string {
     nonceBytes,
     prevHashBytes,
     promptBytes,
+    separatorBytes,
     responseBytes,
     paddingBytes,
   ]);
@@ -50,7 +53,6 @@ export function checkDifficulty(hash: string, difficulty: number): boolean {
   return hashBN.lt(target);
 }
 
-// does not check difficulty
 export function validateBlock(
   blocks: Block[],
   index: number,
@@ -71,33 +73,6 @@ export function validateBlock(
     validateBlock(blocks, index - 1, block.prevHash)
   );
 }
-
-// export function createChain(
-//   data: Pick<Block, "prompt" | "prevResponse" | "nonce">[]
-// ) {
-//   const blocks: Block[] = [];
-
-//   for (let i = 0; i < data.length; i++) {
-//     const prevHash = i === 0 ? genesisHash : hashBlock(blocks[i - 1]);
-//     blocks.push({ ...data[i], prevHash });
-//   }
-
-//   return blocks;
-// }
-
-// export function countLeadingZeroBits(hash: string) {
-//   const hashBN = new BN(hash, "hex");
-//   const hashBits = hashBN.toString(2);
-//   let count = 0;
-//   for (let i = 0; i < hashBits.length; i++) {
-//     if (hashBits[i] === "0") {
-//       count++;
-//     } else {
-//       break;
-//     }
-//   }
-//   return count;
-// }
 
 export type LeaderMessage = {
   hash: string;
