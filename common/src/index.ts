@@ -15,7 +15,7 @@ export type Block = {
 
 export function hashBlock(block: Block): string {
   // concat everything into a buffer
-  const nonceBytes = Buffer.from(block.nonce.toArray());
+  const nonceBytes = Buffer.from(block.nonce.toArray("be", 32));
   const prevHashBytes = Buffer.from(block.prevHash, "hex");
   const promptBytes = Buffer.from(block.prompt, "utf8");
   const responseBytes = Buffer.from(block.prevResponse, "utf8");
@@ -37,8 +37,6 @@ export function hashBlock(block: Block): string {
     responseBytes,
     paddingBytes,
   ]);
-
-  console.log(buffer);
 
   // hash buffer
   const hash = crypto.createHash("sha256");
