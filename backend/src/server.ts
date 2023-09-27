@@ -344,6 +344,14 @@ type SubmitParams = {
   expectedHash: string;
 };
 
+const valid256String = (str: string): boolean => {
+  return (
+    typeof str === "string" &&
+    str.length === 64 &&
+    /^[0-9a-fA-F]+$/.test(str)
+  );
+}
+
 app.post("/submit", (req: Request, res: Response) => {
   const { prompt, nonce, prevHash, expectedHash } = req.body as SubmitParams;
 
@@ -354,34 +362,22 @@ app.post("/submit", (req: Request, res: Response) => {
 
   // check prompt is a string
   if (typeof prompt !== "string") {
-    return res.status(400).json({ error: "Prompt must be a string" });
+    return res.status(400).json({ error: "prompt must be a string" });
   }
 
   // check nonce is a hex string of length 64
-  if (
-    typeof nonce !== "string" ||
-    nonce.length !== 64 ||
-    !/^[0-9a-fA-F]+$/.test(nonce)
-  ) {
-    return res.status(400).json({ error: "Nonce must be a hex string" });
+  if (!valid256String(nonce)) {
+    return res.status(400).json({ error: "nonce must be a hex string" });
   }
 
   // check prevHash is a hex string of length 64
-  if (
-    typeof prevHash !== "string" ||
-    prevHash.length !== 64 ||
-    !/^[0-9a-fA-F]+$/.test(prevHash)
-  ) {
-    return res.status(400).json({ error: "PrevHash must be a hex string" });
+  if (!valid256String(prevHash)) {
+    return res.status(400).json({ error: "prevHash must be a hex string" });
   }
 
   // check expectedHash is a hex string of length 64
-  if (
-    typeof expectedHash !== "string" ||
-    expectedHash.length !== 64 ||
-    !/^[0-9a-fA-F]+$/.test(expectedHash)
-  ) {
-    return res.status(400).json({ error: "ExpectedHash must be a hex string" });
+  if (!valid256String(expectedHash)) {
+    return res.status(400).json({ error: "expectedHash must be a hex string" });
   }
 
   const nonceBN = new BN(nonce, "hex");

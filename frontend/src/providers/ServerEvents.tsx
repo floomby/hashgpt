@@ -87,6 +87,11 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
             }
             // Insert the new leader into the leaderboard
             setLeaderBoard((prevLeaderBoard) => {
+              // remove anything in the leaderboard that has the same prompt
+              prevLeaderBoard = prevLeaderBoard.filter(
+                (leader) => leader.prompt !== message.prompt
+              );
+
               console.log("prevLeaderBoard", prevLeaderBoard);
               return [
                 ...prevLeaderBoard.slice(0, insertIndex),

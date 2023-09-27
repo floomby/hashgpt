@@ -1,3 +1,6 @@
+// TODO this really could use some refactoring (it is confusing and there is also a very unlikely to occur race)
+// TODO fix the unresponsiveness when mining (idk the exact cause)
+
 import React, {
   createContext,
   ReactNode,
@@ -87,6 +90,7 @@ fn ch(e: u32, f: u32, g: u32) -> u32 {
 @group(0) @binding(1) var<storage, read> block_size: u32;
 @group(0) @binding(2) var<storage, read_write> hashes: array<u32>;
 @group(0) @binding(3) var<storage, read> iterations: u32;
+@group(0) @binding(4) var<storage, read> dispatched_count: u32;
 
 @compute @workgroup_size(${device.limits.maxComputeWorkgroupSizeX})
 fn mine(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -119,7 +123,7 @@ fn mine(@builtin(global_invocation_id) global_id: vec3<u32>) {
     0x748f82eeu, 0x78a5636fu, 0x84c87814u, 0x8cc70208u, 0x90befffau, 0xa4506cebu, 0xbef9a3f7u, 0xc67178f2u
   );
 
-  var nonce = array<u32,8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, index);
+  var nonce = array<u32,8>(0u, 0u, 0u, 0u, 0u, dispatched_count, 0u, index);
 
   for (var i = 0u; i < iterations; i++) {
     scratch[0] = 0x6a09e667u;
@@ -267,6 +271,9 @@ class Miner {
   private resultBufferSize: number;
   private resultBuffer: GPUBuffer;
   private iterationsBuffer: GPUBuffer;
+  private dispatchedCount: number;
+  private dispatchedCountBuffer: GPUBuffer;
+  private dispatchedCountStagingBuffer: GPUBuffer;
 
   private bindGroup!: GPUBindGroup;
   private commandEncoder!: GPUCommandEncoder;
@@ -329,6 +336,17 @@ class Miner {
     });
     new Uint32Array(this.iterationsBuffer.getMappedRange()).set([iterations]);
     this.iterationsBuffer.unmap();
+
+    this.dispatchedCount = 0;
+    this.dispatchedCountBuffer = gpu.getDevice.createBuffer({
+      size: Uint32Array.BYTES_PER_ELEMENT,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    this.dispatchedCountStagingBuffer = gpu.getDevice.createBuffer({
+      size: Uint32Array.BYTES_PER_ELEMENT,
+      usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.MAP_WRITE,
+    });
 
     this.mining = false;
     this.queuedContent = null;
@@ -432,8 +450,16 @@ class Miner {
             buffer: this.iterationsBuffer,
           },
         },
+        {
+          binding: 4,
+          resource: {
+            buffer: this.dispatchedCountBuffer,
+          },
+        },
       ],
     });
+
+    this.dispatchedCount = 0;
   }
 
   async run() {
@@ -442,7 +468,21 @@ class Miner {
         // do mining
         console.log("mining");
 
+        await this.dispatchedCountStagingBuffer.mapAsync(GPUMapMode.WRITE);
+        new Uint32Array(this.dispatchedCountStagingBuffer.getMappedRange()).set(
+          [this.dispatchedCount]
+        );
+        this.dispatchedCountStagingBuffer.unmap();
+
         this.commandEncoder = this.gpu.getDevice.createCommandEncoder();
+
+        this.commandEncoder.copyBufferToBuffer(
+          this.dispatchedCountStagingBuffer,
+          0,
+          this.dispatchedCountBuffer,
+          0,
+          Uint32Array.BYTES_PER_ELEMENT
+        );
 
         const passEncoder = this.commandEncoder.beginComputePass();
         passEncoder.setPipeline(this.gpu.getComputePipeline);
@@ -466,8 +506,8 @@ class Miner {
         this.gpu.getDevice.queue.submit([gpuCommands]);
 
         await hashesReadBuffer.mapAsync(GPUMapMode.READ);
-
         const hashes = new Uint8Array(hashesReadBuffer.getMappedRange());
+        // hashesReadBuffer.unmap();
 
         let lowestHash = new BN(
           "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -485,6 +525,9 @@ class Miner {
             );
           }
         }
+        hashesReadBuffer.unmap();
+
+        console.log("lowest hash: ", lowestHash.toString("hex").padStart(64, "0"));
 
         if (lowestHash.lt(this.target)) {
           console.log("found a hash");
@@ -499,6 +542,9 @@ class Miner {
             );
           }
         }
+
+        this.dispatchedCount += 1;
+        // break;
       } else {
         // wait for mining to be enabled
         // TODO there is surely a better way to do this
