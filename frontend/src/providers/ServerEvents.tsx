@@ -1,9 +1,4 @@
-import {
-  LeaderMessage,
-  ServerMessage,
-  genesisHash,
-  genesisResponse,
-} from "common";
+import { LeaderMessage, ServerMessage } from "common";
 import React, { createContext, ReactNode, useEffect, useState } from "react";
 import BN from "bn.js";
 
@@ -12,12 +7,16 @@ export type ChatMessages = {
   response?: string;
 };
 
+export type PrevBlockComponents = {
+  hash: string;
+  response: string;
+};
+
 interface ServerEventsProviderProps {
   timeLeft: number | null;
   leaderBoard: LeaderMessage[];
   mineable: boolean;
-  currentHash: string;
-  prevResponse: string;
+  prevBlockComponents?: PrevBlockComponents;
   chatMessages: ChatMessages[];
 }
 
@@ -25,8 +24,7 @@ export const ServerEventsContext = createContext<ServerEventsProviderProps>({
   timeLeft: null,
   leaderBoard: [],
   mineable: false,
-  currentHash: genesisHash, // idk if I like this default initialization here?
-  prevResponse: genesisResponse,
+  prevBlockComponents: undefined,
   chatMessages: [],
 });
 
@@ -60,8 +58,12 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
   }, [targetTime]);
 
   const [leaderBoard, setLeaderBoard] = useState<LeaderMessage[]>([]);
-  const [currentHash, setCurrentHash] = useState<string>(genesisHash);
-  const [prevResponse, setPrevResponse] = useState<string>(genesisResponse);
+  // const [currentHash, setCurrentHash] = useState<string>(genesisHash);
+  // const [prevResponse, setPrevResponse] = useState<string>(genesisResponse);
+  const [prevBlockComponents, setPrevBlockComponents] = useState<
+    PrevBlockComponents | undefined
+  >(undefined);
+
   // TODO get the chat history!
   const [chatMessages, setChatMessages] = useState<ChatMessages[]>([]);
 
@@ -109,8 +111,10 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
           break;
         case "mineable":
           setMineable(true); // I don't like how this can get out of sync
-          setCurrentHash(message.currentHash);
-          setPrevResponse(message.prevResponse);
+          setPrevBlockComponents({
+            hash: message.currentHash,
+            response: message.prevResponse,
+          });
           setLeaderBoard([]);
           break;
         case "accepted":
@@ -155,9 +159,8 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
         timeLeft,
         leaderBoard,
         mineable,
-        currentHash,
         chatMessages,
-        prevResponse,
+        prevBlockComponents,
       }}
     >
       {children}
