@@ -15,6 +15,7 @@ import {
 
 import Timer from "./timer.js";
 import { type Entry, lastState, writeEntry } from "./db.js";
+import { type LLMState, callLLM } from "./llm.js";
 
 // config
 const PORT = 3000;
@@ -97,79 +98,10 @@ type State = {
   timer: Timer;
   clients: Response[];
   // needed to solve mid stream client joining
-  llmState?: {
-    prompt: string;
-    response: string;
-    hash: string;
-  };
-};
-
-// TODO implement this
-const mockllm = (
-  prompt: string,
-  hash: string,
-  callback: (token: string) => void
-) => {
-  state.llmState = { prompt, response: "", hash };
-  console.log("mocking llm");
-  return new Promise<string>((resolve) => {
-    let tokenCount = 20;
-    const interval = setInterval(() => {
-      if (tokenCount > 0) {
-        tokenCount--;
-        state.llmState!.response += "blah ";
-        callback("blah ");
-      } else {
-        clearInterval(interval);
-        resolve(state.llmState!.response);
-      }
-    }, 500);
-  });
+  llmState: LLMState;
 };
 
 const initialState = async (): Promise<State> => {
-  // touch the db file if it does not exist
-  // if (!fs.existsSync(dbFile)) {
-  //   fs.writeFileSync(dbFile, "");
-  // }
-
-  // let count = 0;
-  // let prevHash = genesisHash;
-  // let prevResponse = genesisResponse;
-
-  // const readStream = fs.createReadStream(dbFile);
-
-  // await new Promise((resolve, reject) => {
-  //   const reader = readline.createInterface({
-  //     input: readStream,
-  //     crlfDelay: Infinity,
-  //   });
-
-  //   reader.on("line", (line) => {
-  //     const entry: Entry = JSON.parse(line);
-  //     count++;
-  //     prevHash = entry.hash;
-  //     prevResponse = entry.response;
-  //   });
-
-  //   reader.on("close", () => {
-  //     console.log("completed loading db file");
-  //     resolve(null);
-  //   });
-
-  //   reader.on("error", (err) => {
-  //     reject(err);
-  //   });
-  // });
-
-  // // create a write stream to append to the file, making the file if it does not yet exist
-  // const writeStream = fs.createWriteStream(dbFile, { flags: "a" });
-
-  // const writeEntry = (entry: Entry) => {
-  //   writeStream.write(JSON.stringify(entry) + "\n");
-  //   state.count++;
-  // };
-
   const { count, prevHash, prevResponse } = await lastState();
 
   const timer = new Timer(duration);
@@ -208,9 +140,10 @@ const initialState = async (): Promise<State> => {
       .toString("hex")
       .padStart(64, "0");
 
-    const response = await mockllm(
+    const response = await callLLM(
       state.candidateBlock.prompt,
       hashString,
+      state,
       (token) => {
         for (const client of clients) {
           sendToken(client, token);
@@ -245,6 +178,11 @@ const initialState = async (): Promise<State> => {
     state: ChainState.ACCEPTING,
     timer,
     clients,
+    llmState: {
+      prompt: "",
+      response: "",
+      hash: "",
+    },
   };
 };
 

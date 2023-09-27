@@ -80,3 +80,27 @@ export const lastState = async () =>
       }
     );
   });
+
+export const getLastEntries = async (count: number) => {
+  return new Promise<Entry[]>((resolve, reject) => {
+    db.all(
+      "SELECT * FROM entries ORDER BY id DESC LIMIT ?",
+      [count],
+      (err, rows: EntryRow[]) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(
+          rows.map((row) => ({
+            hash: row.hash,
+            nonce: row.nonce,
+            prompt: row.prompt,
+            response: row.response,
+          }))
+        );
+      }
+    );
+  });
+};
