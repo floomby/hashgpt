@@ -18,6 +18,7 @@ interface ServerEventsProviderProps {
   mineable: boolean;
   prevBlockComponents?: PrevBlockComponents;
   chatMessages: ChatMessages[];
+  generating?: string;
 }
 
 export const ServerEventsContext = createContext<ServerEventsProviderProps>({
@@ -38,6 +39,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
   const [targetTime, setTargetTime] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [mineable, setMineable] = useState<boolean>(false);
+  const [generating, setGenerating] = useState<string>("");
 
   useEffect(() => {
     if (targetTime === null) return;
@@ -119,6 +121,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
           break;
         case "accepted":
           setMineable(false);
+          setGenerating(message.hash);
           setChatMessages((prevChatMessages) => {
             return [
               ...prevChatMessages,
@@ -161,6 +164,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
         mineable,
         chatMessages,
         prevBlockComponents,
+        generating,
       }}
     >
       {children}

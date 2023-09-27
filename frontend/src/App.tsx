@@ -14,6 +14,7 @@ const App: React.FC = () => {
           <div className="flex flex-col gap-4 align-start justify-center bg-slate-950 min-h-screen text-white">
             <CountdownTimer />
             <Leader />
+            <div className="m-2 border-[1px] border-slate-400"></div>
             <Chat />
             <Prompt />
           </div>

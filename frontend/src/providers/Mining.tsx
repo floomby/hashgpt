@@ -22,6 +22,7 @@ interface MiningProviderProps {
   mining: boolean;
   setMining: React.Dispatch<React.SetStateAction<boolean>>;
   hashRate: number;
+  currentPrompt?: string;
 }
 
 export const MiningContext = createContext<MiningProviderProps>({
@@ -39,6 +40,7 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
   const [mining, setMining] = useState<boolean>(false);
   const [hashRate, setHashRate] = useState<number>(0);
   const [ready, setReady] = useState<boolean>(false);
+  const [currentPrompt, setCurrentPrompt] = useState<string>("");
 
   const { prevBlockComponents, leaderBoard, mineable } =
     useContext(ServerEventsContext);
@@ -86,6 +88,7 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
     minerWorkerRef.current?.postMessage({
       type: "start",
     } as MiningWorkerMessage);
+    setCurrentPrompt(prompt);
   }, []);
 
   useEffect(() => {
@@ -125,6 +128,7 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
         mining,
         setMining,
         hashRate,
+        currentPrompt,
       }}
     >
       {children}

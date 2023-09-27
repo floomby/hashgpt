@@ -47,12 +47,6 @@ export function hashBlock(block: Block): string {
   return hash.digest("hex");
 }
 
-export function checkDifficulty(hash: string, difficulty: number): boolean {
-  const hashBN = new BN(hash, "hex");
-  const target = new BN(2).pow(new BN(256 - difficulty));
-  return hashBN.lt(target);
-}
-
 export function validateBlock(
   blocks: Block[],
   index: number,
@@ -95,6 +89,7 @@ export type MineableMessage = {
 
 export type AcceptedMessage = {
   prompt: string;
+  hash: string;
 };
 
 export type ServerMessage =

@@ -5,7 +5,7 @@ const Chat: React.FC = () => {
   const { chatMessages } = useContext(ServerEventsContext);
 
   return (
-    <div className="w-full p-2 min-h-[48px]">
+    <div className="w-full p-2 min-h-[48px] grow">
       {chatMessages.map((message, index) => {
         return (
           <div key={index} className="flex flex-col gap-1">

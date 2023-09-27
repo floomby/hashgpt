@@ -4,7 +4,6 @@ import fs from "fs";
 import readline from "readline";
 import BN from "bn.js";
 import bodyParser from "body-parser";
-import EventEmitter from "events";
 
 import {
   type Block,
@@ -14,48 +13,8 @@ import {
   ServerMessage,
 } from "common";
 
-class Timer extends EventEmitter {
-  private initialDuration: number;
-  private duration: number;
-  private interval: NodeJS.Timeout | null;
-
-  constructor(duration: number) {
-    super();
-    this.initialDuration = duration;
-    this.duration = duration;
-    this.interval = null;
-  }
-
-  start() {
-    if (this.interval) this.stop();
-
-    this.interval = setInterval(() => {
-      this.duration -= 1000;
-
-      if (this.duration <= 0) {
-        this.duration = 0;
-        this.stop();
-        this.emit("end");
-      }
-    }, 1000);
-  }
-
-  stop() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-  }
-
-  reset() {
-    this.stop();
-    this.duration = this.initialDuration;
-  }
-
-  getTimeRemaining() {
-    return this.duration;
-  }
-}
+import Timer from "./timer.js";
+import { type Entry, lastState, writeEntry } from "./db.js";
 
 // config
 const PORT = 3000;
@@ -64,13 +23,6 @@ const duration = 20 * 1000;
 const dbFile = "./dbfile";
 
 const app = express();
-
-type Entry = {
-  hash: string;
-  nonce: string;
-  prompt: string;
-  response: string;
-};
 
 enum ChainState {
   ACCEPTING, // this means that it is mineable
@@ -113,11 +65,12 @@ const sendMineable = (
   );
 };
 
-const sendAccepted = (client: Response, prompt: string) => {
+const sendAccepted = (client: Response, prompt: string, hash: string) => {
   client.write(
     `data:${JSON.stringify({
       type: "accepted",
       prompt,
+      hash,
     } as ServerMessage)}\n\n`
   );
 };
@@ -147,12 +100,17 @@ type State = {
   llmState?: {
     prompt: string;
     response: string;
+    hash: string;
   };
 };
 
 // TODO implement this
-const mockllm = (prompt: string, callback: (token: string) => void) => {
-  state.llmState = { prompt, response: "" };
+const mockllm = (
+  prompt: string,
+  hash: string,
+  callback: (token: string) => void
+) => {
+  state.llmState = { prompt, response: "", hash };
   console.log("mocking llm");
   return new Promise<string>((resolve) => {
     let tokenCount = 20;
@@ -171,46 +129,48 @@ const mockllm = (prompt: string, callback: (token: string) => void) => {
 
 const initialState = async (): Promise<State> => {
   // touch the db file if it does not exist
-  if (!fs.existsSync(dbFile)) {
-    fs.writeFileSync(dbFile, "");
-  }
+  // if (!fs.existsSync(dbFile)) {
+  //   fs.writeFileSync(dbFile, "");
+  // }
 
-  let count = 0;
-  let prevHash = genesisHash;
-  let prevResponse = genesisResponse;
+  // let count = 0;
+  // let prevHash = genesisHash;
+  // let prevResponse = genesisResponse;
 
-  const readStream = fs.createReadStream(dbFile);
+  // const readStream = fs.createReadStream(dbFile);
 
-  await new Promise((resolve, reject) => {
-    const reader = readline.createInterface({
-      input: readStream,
-      crlfDelay: Infinity,
-    });
+  // await new Promise((resolve, reject) => {
+  //   const reader = readline.createInterface({
+  //     input: readStream,
+  //     crlfDelay: Infinity,
+  //   });
 
-    reader.on("line", (line) => {
-      const entry: Entry = JSON.parse(line);
-      count++;
-      prevHash = entry.hash;
-      prevResponse = entry.response;
-    });
+  //   reader.on("line", (line) => {
+  //     const entry: Entry = JSON.parse(line);
+  //     count++;
+  //     prevHash = entry.hash;
+  //     prevResponse = entry.response;
+  //   });
 
-    reader.on("close", () => {
-      console.log("completed loading db file");
-      resolve(null);
-    });
+  //   reader.on("close", () => {
+  //     console.log("completed loading db file");
+  //     resolve(null);
+  //   });
 
-    reader.on("error", (err) => {
-      reject(err);
-    });
-  });
+  //   reader.on("error", (err) => {
+  //     reject(err);
+  //   });
+  // });
 
-  // create a write stream to append to the file, making the file if it does not yet exist
-  const writeStream = fs.createWriteStream(dbFile, { flags: "a" });
+  // // create a write stream to append to the file, making the file if it does not yet exist
+  // const writeStream = fs.createWriteStream(dbFile, { flags: "a" });
 
-  const writeEntry = (entry: Entry) => {
-    writeStream.write(JSON.stringify(entry) + "\n");
-    state.count++;
-  };
+  // const writeEntry = (entry: Entry) => {
+  //   writeStream.write(JSON.stringify(entry) + "\n");
+  //   state.count++;
+  // };
+
+  const { count, prevHash, prevResponse } = await lastState();
 
   const timer = new Timer(duration);
   timer.start();
@@ -234,20 +194,29 @@ const initialState = async (): Promise<State> => {
     state.llmState = {
       prompt: state.candidateBlock.prompt,
       response: state.prevResponse,
+      hash: state.candidateBlock.hash.toString("hex").padStart(64, "0"),
     };
 
+    const hashString = state.candidateBlock.hash
+      .toString("hex")
+      .padStart(64, "0");
+
     for (const client of clients) {
-      sendAccepted(client, state.candidateBlock.prompt);
+      sendAccepted(client, state.candidateBlock.prompt, hashString);
     }
     state.prevHash = state.candidateBlock.hash
       .toString("hex")
       .padStart(64, "0");
 
-    const response = await mockllm(state.candidateBlock.prompt, (token) => {
-      for (const client of clients) {
-        sendToken(client, token);
+    const response = await mockllm(
+      state.candidateBlock.prompt,
+      hashString,
+      (token) => {
+        for (const client of clients) {
+          sendToken(client, token);
+        }
       }
-    });
+    );
 
     state.prevHash = state.candidateBlock.hash
       .toString("hex")
@@ -329,7 +298,7 @@ app.get("/events", (req: Request, res: Response) => {
     if (!state.llmState) {
       throw new Error("llmState is undefined (indicates a bug)");
     }
-    sendAccepted(res, state.llmState!.prompt);
+    sendAccepted(res, state.llmState!.prompt, state.llmState!.hash);
     sendToken(res, state.llmState!.response);
   }
 
@@ -346,11 +315,9 @@ type SubmitParams = {
 
 const valid256String = (str: string): boolean => {
   return (
-    typeof str === "string" &&
-    str.length === 64 &&
-    /^[0-9a-fA-F]+$/.test(str)
+    typeof str === "string" && str.length === 64 && /^[0-9a-fA-F]+$/.test(str)
   );
-}
+};
 
 app.post("/submit", (req: Request, res: Response) => {
   const { prompt, nonce, prevHash, expectedHash } = req.body as SubmitParams;
