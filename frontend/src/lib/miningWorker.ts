@@ -1,3 +1,10 @@
+// mining blocks based on sha256
+// TODO there are some easy optimizations that could be made here
+// - buffer rotation to keep hashing while the buffers are being read by the cpu
+// - swap endianess ahead of time
+// - better workgroup size selection
+// ...also I don't know wgsl (or webgpu for that matter) so there are probably many other things that could be improved
+
 import BN from "bn.js";
 
 const submit = (
@@ -57,10 +64,7 @@ export type MiningWorkerMessage =
     };
 
 // prettier-ignore
-const shader = (device: GPUDevice) => /* wgsl */`
-// mining blocks based on sha256
-// TODO there are some easy optimizations that could be made here
-// I don't know wgsl btw
+const shader = () => /* wgsl */`
 
 fn swap_endianess32(val: u32) -> u32 {
   return ((val>>24u) & 0xffu) | ((val>>8u) & 0xff00u) | ((val<<8u) & 0xff0000u) | ((val<<24u) & 0xff000000u);
@@ -135,7 +139,7 @@ fn ch(e: u32, f: u32, g: u32) -> u32 {
 @group(0) @binding(3) var<storage, read> iterations: u32;
 @group(0) @binding(4) var<storage, read> dispatched_count: u32;
 
-@compute @workgroup_size(${device.limits.maxComputeWorkgroupSizeX})
+@compute @workgroup_size(64)
 fn mine(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
   let index = global_id.x;
@@ -262,7 +266,7 @@ fn mine(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     let old = nonce[7];
-    nonce[7] += ${device.limits.maxComputeWorkgroupSizeX}u;
+    nonce[7] += 64u;
     if (nonce[7] < old) {
       nonce[6] += 1u;
     }
@@ -286,11 +290,11 @@ class GPU {
 
   async init() {
     this.device = await getGPUDevice();
-    // console.log(this.device.limits);
+    console.log(this.device.limits);
 
     this.computePipeline = this.device.createComputePipeline({
       compute: {
-        module: this.device.createShaderModule({ code: shader(this.device) }),
+        module: this.device.createShaderModule({ code: shader() }),
         entryPoint: "mine",
       },
       layout: "auto",
@@ -321,12 +325,13 @@ let target: BN | null = null;
 let miner: Miner | null = null;
 
 gpu.init().then(() => {
+  console.log("GPU initialized");
   miner = new Miner(1024);
   self.postMessage({ type: "ready" });
 });
 
 class Miner {
-  private workgroupCount: number;
+  private dispatchX: number = 0;
   private resultBufferSize: number;
   private resultBuffer: GPUBuffer;
   private iterationsBuffer: GPUBuffer;
@@ -340,9 +345,9 @@ class Miner {
   private prompt: string | null = null;
 
   constructor(iterations: number) {
-    this.workgroupCount = gpu.getDevice.limits.maxComputeWorkgroupSizeX;
+    this.dispatchX = gpu.getDevice.limits.maxComputeWorkgroupSizeX;
 
-    this.resultBufferSize = (256 / 8) * this.workgroupCount * 2;
+    this.resultBufferSize = (256 / 8) * this.dispatchX * 2 * 64;
     this.resultBuffer = gpu.getDevice.createBuffer({
       size: this.resultBufferSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
@@ -493,7 +498,14 @@ class Miner {
     this.dispatchedCount = 0;
   }
 
+  private launched = false;
+
   async run() {
+    if (this.launched) {
+      return;
+    }
+    this.launched = true;
+
     while (true) {
       if (running && target !== null && this.prompt !== null) {
         // do mining
@@ -517,7 +529,7 @@ class Miner {
         const passEncoder = this.commandEncoder.beginComputePass();
         passEncoder.setPipeline(gpu.getComputePipeline);
         passEncoder.setBindGroup(0, this.bindGroup);
-        passEncoder.dispatchWorkgroups(this.workgroupCount);
+        passEncoder.dispatchWorkgroups(this.dispatchX, 1, 1);
         passEncoder.end();
 
         const hashesReadBuffer = gpu.getDevice.createBuffer({
@@ -554,6 +566,11 @@ class Miner {
               "be"
             );
           }
+          // sanity check
+          const nonce = new BN(hashes.subarray(i + 32, i + 64), undefined, "be");
+          if (nonce.eq(new BN("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "hex"))) {
+            console.warn("Hash not preformed on buffer");
+          }
         }
         hashesReadBuffer.unmap();
 
@@ -569,12 +586,6 @@ class Miner {
               this.prompt,
               lowestHash.toString("hex").padStart(64, "0")
             );
-            // console.log(
-            //   "pretend submitting",
-            //   bestNonce.toString("hex").padStart(64, "0"),
-            //   this.prompt,
-            //   lowestHash.toString("hex").padStart(64, "0")
-            // );
           }
         }
 

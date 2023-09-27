@@ -43,12 +43,14 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
   const { prevBlockComponents, leaderBoard, mineable } =
     useContext(ServerEventsContext);
 
-  const minerWorkerRef = useRef<Worker>(new MineWorker());
+  const minerWorkerRef = useRef<Worker | null>();
 
   useEffect(() => {
+    minerWorkerRef.current = new MineWorker();
     minerWorkerRef.current.onmessage = (
       event: MessageEvent<MiningWorkerMessage>
     ) => {
+      console.log(event.data);
       switch (event.data.type) {
         case "ready":
           setReady(true);
@@ -57,13 +59,13 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
           if (leaderBoard[0]?.hash) {
             target = leaderBoard[0].hash;
           }
-          minerWorkerRef.current.postMessage({
+          minerWorkerRef.current?.postMessage({
             type: "setTarget",
             target,
           } as MiningWorkerMessage);
 
           if (prevBlockComponents) {
-            minerWorkerRef.current.postMessage({
+            minerWorkerRef.current?.postMessage({
               type: "setPrevBlockComponents",
               prevHash: prevBlockComponents.hash,
               prevResponse: prevBlockComponents.response,
@@ -77,18 +79,18 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
   }, []);
 
   const setMiningPrompt = useCallback((prompt: string) => {
-    minerWorkerRef.current.postMessage({
+    minerWorkerRef.current?.postMessage({
       type: "setPrompt",
       prompt,
     } as MiningWorkerMessage);
-    minerWorkerRef.current.postMessage({
+    minerWorkerRef.current?.postMessage({
       type: "start",
     } as MiningWorkerMessage);
   }, []);
 
   useEffect(() => {
     if (mineable === false) {
-      minerWorkerRef.current.postMessage({
+      minerWorkerRef.current?.postMessage({
         type: "stop",
       } as MiningWorkerMessage);
     }
@@ -100,7 +102,7 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
     if (leaderBoard[0]?.hash) {
       target = leaderBoard[0].hash;
     }
-    minerWorkerRef.current.postMessage({
+    minerWorkerRef.current?.postMessage({
       type: "setTarget",
       target,
     } as MiningWorkerMessage);
@@ -108,28 +110,13 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
 
   useEffect(() => {
     if (prevBlockComponents) {
-      minerWorkerRef.current.postMessage({
+      minerWorkerRef.current?.postMessage({
         type: "setPrevBlockComponents",
         prevHash: prevBlockComponents.hash,
         prevResponse: prevBlockComponents.response,
       } as MiningWorkerMessage);
     }
   }, [prevBlockComponents]);
-
-  // useEffect(() => {
-  //   if (minerRef.current) minerRef.current.setPrevResponse = prevResponse;
-  // }, [prevResponse, updateEnabled]);
-
-  // const setMiningPrompt = useCallback(
-  //   (miningPrompt: string) => {
-  //     console.log("current hash: ", currentHash);
-
-  //     minerRef.current?.queueContent(buffer);
-  //     if (minerRef.current) minerRef.current.setPrompt = miningPrompt;
-  //     console.log(minerRef.current);
-  //   },
-  //   [prevBlockComponents]
-  // );
 
   return (
     <MiningContext.Provider

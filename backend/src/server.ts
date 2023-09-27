@@ -426,7 +426,7 @@ app.post("/submit", (req: Request, res: Response) => {
         sendCurrentLeader(client);
       }
     } else {
-      return res.status(400).json({
+      return res.status(409).json({
         error: `Invalid block - hash ${hash} is not less than ${state.candidateBlock.hash
           .toString("hex")
           .padStart(64, "0")}`,
