@@ -36,6 +36,7 @@ type EntryRow = {
 };
 
 export const writeEntry = (entry: Entry) => {
+  console.log("writing entry", entry);
   db.run(
     `INSERT INTO entries(hash, nonce, prompt, response) VALUES(?, ?, ?, ?)`,
     [entry.hash, entry.nonce, entry.prompt, entry.response],
@@ -104,3 +105,31 @@ export const getLastEntries = async (count: number) => {
     );
   });
 };
+
+export const getChatHistory = (from: number, to: number) =>
+  new Promise<
+    {
+      id: number;
+      prompt: string;
+      response: string;
+    }[]
+  >((resolve, reject) => {
+    db.all(
+      "SELECT * FROM entries WHERE id >= ? AND id <= ? ORDER BY id ASC",
+      [from, to],
+      (err, rows: EntryRow[]) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(
+          rows.map((row) => ({
+            id: row.id,
+            prompt: row.prompt,
+            response: row.response,
+          }))
+        );
+      }
+    );
+  });

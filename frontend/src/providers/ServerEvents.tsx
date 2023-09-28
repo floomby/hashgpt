@@ -1,8 +1,15 @@
 import { LeaderMessage, ServerMessage } from "common";
-import React, { createContext, ReactNode, useEffect, useState } from "react";
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import BN from "bn.js";
 
 export type ChatMessages = {
+  id: number;
   prompt: string;
   response?: string;
 };
@@ -19,6 +26,7 @@ interface ServerEventsProviderProps {
   prevBlockComponents?: PrevBlockComponents;
   chatMessages: ChatMessages[];
   generating?: string;
+  loadMoreHistory: () => void;
 }
 
 export const ServerEventsContext = createContext<ServerEventsProviderProps>({
@@ -27,6 +35,7 @@ export const ServerEventsContext = createContext<ServerEventsProviderProps>({
   mineable: false,
   prevBlockComponents: undefined,
   chatMessages: [],
+  loadMoreHistory: () => {},
 });
 
 interface ServerEventsProps {
@@ -60,14 +69,29 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
   }, [targetTime]);
 
   const [leaderBoard, setLeaderBoard] = useState<LeaderMessage[]>([]);
-  // const [currentHash, setCurrentHash] = useState<string>(genesisHash);
-  // const [prevResponse, setPrevResponse] = useState<string>(genesisResponse);
   const [prevBlockComponents, setPrevBlockComponents] = useState<
     PrevBlockComponents | undefined
   >(undefined);
 
-  // TODO get the chat history!
   const [chatMessages, setChatMessages] = useState<ChatMessages[]>([]);
+  const loadMoreHistory = useCallback(() => {
+    const earliestMessageId = chatMessages[0]?.id;
+
+    let params = new URLSearchParams();
+    if (earliestMessageId !== undefined) {
+      params.append("from", (earliestMessageId - 4).toString());
+      params.append("to", (earliestMessageId - 1).toString());
+    }
+
+    fetch(`http://localhost:3000/history?${params.toString()}`)
+      .then((response) => response.json())
+      .then((data) => {
+        setChatMessages((prevChatMessages) => {
+          return [...data, ...prevChatMessages];
+        });
+      })
+      .catch(console.error);
+  }, [setChatMessages, chatMessages]);
 
   useEffect(() => {
     // Create an EventSource connection to the server's /events endpoint
@@ -126,6 +150,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
             return [
               ...prevChatMessages,
               {
+                id: message.id,
                 prompt: message.prompt,
               },
             ];
@@ -139,6 +164,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
             return [
               ...prevChatMessages.slice(0, prevChatMessages.length - 1),
               {
+                id: lastMessage.id,
                 prompt: lastMessage.prompt,
                 response: (lastMessage.response ?? "") + message.tokenText,
               },
@@ -165,6 +191,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
         chatMessages,
         prevBlockComponents,
         generating,
+        loadMoreHistory,
       }}
     >
       {children}

@@ -14,7 +14,7 @@ import {
 } from "common";
 
 import Timer from "./timer.js";
-import { type Entry, lastState, writeEntry } from "./db.js";
+import { type Entry, lastState, writeEntry, getChatHistory } from "./db.js";
 import { type LLMState, callLLM } from "./llm.js";
 
 // config
@@ -172,9 +172,9 @@ const initialState = async (): Promise<State> => {
   });
 
   return {
-    prevHash, // TODO load from file
-    prevResponse, // TODO load from file
-    count, // TODO load from file
+    prevHash,
+    prevResponse,
+    count,
     state: ChainState.ACCEPTING,
     timer,
     clients,
@@ -294,8 +294,6 @@ app.post("/submit", (req: Request, res: Response) => {
     prevResponse: state.prevResponse,
   });
 
-  console.log("hash: ", hash, " expectedHash: ", expectedHash);
-
   // check the expected hash is correct
   if (hash !== expectedHash) {
     return res.status(400).json({ error: "Incorrect hash" });
@@ -338,6 +336,36 @@ app.post("/submit", (req: Request, res: Response) => {
       });
     }
   }
+});
+
+app.get("/history", async (req: Request, res: Response) => {
+  const { from, to } = req.query as { from: string; to: string };
+
+  if (!from && !to) {
+    // use default values
+    const entries = await getChatHistory(state.count - 4, state.count + 1);
+    return res.status(200).json(entries);
+  }
+
+  if (!from || !to) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  const fromInt = parseInt(from);
+
+  if (isNaN(fromInt)) {
+    return res.status(400).json({ error: "from must be a number" });
+  }
+
+  const toInt = parseInt(to);
+
+  if (isNaN(toInt)) {
+    return res.status(400).json({ error: "to must be a number" });
+  }
+
+  const entries = await getChatHistory(fromInt, toInt);
+
+  res.status(200).json(entries);
 });
 
 app.listen(PORT, () => {

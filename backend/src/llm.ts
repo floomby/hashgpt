@@ -24,7 +24,7 @@ const mockLLM = (
   state.llmState = { prompt, response: "", hash };
   console.log("mocking llm");
   return new Promise<string>((resolve) => {
-    let tokenCount = 20;
+    let tokenCount = 5;
     const interval = setInterval(() => {
       if (tokenCount > 0) {
         tokenCount--;
@@ -68,7 +68,6 @@ const generateLLM = async (
     stream: true,
   });
   for await (const part of stream) {
-    process.stdout.write(part.choices[0]?.delta?.content || "");
     callback(part.choices[0]?.delta?.content || "");
     state.llmState.response += part.choices[0]?.delta?.content || "";
   }

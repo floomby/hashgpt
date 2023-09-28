@@ -88,6 +88,7 @@ export type MineableMessage = {
 };
 
 export type AcceptedMessage = {
+  id: number;
   prompt: string;
   hash: string;
 };
