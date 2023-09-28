@@ -48,7 +48,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
   const [targetTime, setTargetTime] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [mineable, setMineable] = useState<boolean>(false);
-  const [generating, setGenerating] = useState<string>("");
+  const [generating, setGenerating] = useState<string>(""); // hash of the previous block
 
   useEffect(() => {
     if (targetTime === null) return;
@@ -146,6 +146,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
         case "accepted":
           setMineable(false);
           setGenerating(message.hash);
+          console.log("accepted", message);
           setChatMessages((prevChatMessages) => {
             return [
               ...prevChatMessages,
@@ -157,7 +158,6 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
           });
           break;
         case "token":
-          console.log("token", message);
           setChatMessages((prevChatMessages) => {
             const lastMessage = prevChatMessages[prevChatMessages.length - 1];
             // TODO fix the poor performing code here

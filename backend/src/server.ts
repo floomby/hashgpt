@@ -1,20 +1,12 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import fs from "fs";
-import readline from "readline";
 import BN from "bn.js";
 import bodyParser from "body-parser";
 
-import {
-  type Block,
-  genesisHash,
-  genesisResponse,
-  hashBlock,
-  ServerMessage,
-} from "common";
+import { type Block, hashBlock, ServerMessage } from "common";
 
 import Timer from "./timer.js";
-import { type Entry, lastState, writeEntry, getChatHistory } from "./db.js";
+import { lastState, writeEntry, getChatHistory } from "./db.js";
 import { type LLMState, callLLM } from "./llm.js";
 
 // config
@@ -66,12 +58,18 @@ const sendMineable = (
   );
 };
 
-const sendAccepted = (client: Response, prompt: string, hash: string) => {
+const sendAccepted = (
+  client: Response,
+  prompt: string,
+  hash: string,
+  id: number
+) => {
   client.write(
     `data:${JSON.stringify({
       type: "accepted",
       prompt,
       hash,
+      id,
     } as ServerMessage)}\n\n`
   );
 };
@@ -133,8 +131,14 @@ const initialState = async (): Promise<State> => {
       .toString("hex")
       .padStart(64, "0");
 
+    state.count++;
     for (const client of clients) {
-      sendAccepted(client, state.candidateBlock.prompt, hashString);
+      sendAccepted(
+        client,
+        state.candidateBlock.prompt,
+        hashString,
+        state.count
+      );
     }
     state.prevHash = state.candidateBlock.hash
       .toString("hex")
@@ -236,7 +240,12 @@ app.get("/events", (req: Request, res: Response) => {
     if (!state.llmState) {
       throw new Error("llmState is undefined (indicates a bug)");
     }
-    sendAccepted(res, state.llmState!.prompt, state.llmState!.hash);
+    sendAccepted(
+      res,
+      state.llmState!.prompt,
+      state.llmState!.hash,
+      state.count
+    );
     sendToken(res, state.llmState!.response);
   }
 
@@ -343,7 +352,7 @@ app.get("/history", async (req: Request, res: Response) => {
 
   if (!from && !to) {
     // use default values
-    const entries = await getChatHistory(state.count - 4, state.count + 1);
+    const entries = await getChatHistory(state.count - 4, state.count);
     return res.status(200).json(entries);
   }
 

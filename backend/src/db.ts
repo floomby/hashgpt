@@ -36,7 +36,6 @@ type EntryRow = {
 };
 
 export const writeEntry = (entry: Entry) => {
-  console.log("writing entry", entry);
   db.run(
     `INSERT INTO entries(hash, nonce, prompt, response) VALUES(?, ?, ?, ?)`,
     [entry.hash, entry.nonce, entry.prompt, entry.response],
@@ -44,8 +43,6 @@ export const writeEntry = (entry: Entry) => {
       if (err) {
         return console.error(err.message);
       }
-
-      console.log(`A row has been inserted with rowid ${this.lastID}`);
     }
   );
 };

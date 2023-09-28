@@ -11,7 +11,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import BN from "bn.js";
 import { ServerEventsContext } from "./ServerEvents";
 
 import MineWorker from "../lib/miningWorker?worker";
