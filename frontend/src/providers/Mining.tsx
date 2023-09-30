@@ -37,8 +37,7 @@ interface MiningProps {
 
 export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
   const [mining, setMining] = useState<boolean>(false);
-  const [hashRate, setHashRate] = useState<number>(0);
-  const [ready, setReady] = useState<boolean>(false);
+  const [hashRate] = useState<number>(0); // TODO
   const [currentPrompt, setCurrentPrompt] = useState<string>("");
 
   const { prevBlockComponents, leaderBoard, mineable } =
@@ -54,7 +53,6 @@ export const MiningProvider: React.FC<MiningProps> = ({ children }) => {
       console.log(event.data);
       switch (event.data.type) {
         case "ready":
-          setReady(true);
           let target =
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
           if (leaderBoard[0]?.hash) {

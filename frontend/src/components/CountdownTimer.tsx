@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { ServerEventsContext } from "../providers/ServerEvents";
 
 const CountdownTimer: React.FC = () => {
