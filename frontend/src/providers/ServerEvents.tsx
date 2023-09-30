@@ -83,7 +83,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
       params.append("to", (earliestMessageId - 1).toString());
     }
 
-    fetch(`http://localhost:3000/history?${params.toString()}`)
+    fetch(`${import.meta.env.VITE_API_BASE}/history?${params.toString()}`)
       .then((response) => response.json())
       .then((data) => {
         setChatMessages((prevChatMessages) => {
@@ -95,7 +95,7 @@ export const ServerEventsProvider: React.FC<ServerEventsProps> = ({
 
   useEffect(() => {
     // Create an EventSource connection to the server's /events endpoint
-    const eventSource = new EventSource("http://localhost:3000/events");
+    const eventSource = new EventSource(`${import.meta.env.VITE_API_BASE}/events`);
 
     eventSource.onmessage = (event: MessageEvent<string>) => {
       const message = JSON.parse(event.data) as ServerMessage;

@@ -21,7 +21,7 @@ const submit = (
     expectedHash
   );
 
-  fetch(`http://localhost:3000/submit`, {
+  fetch(`${import.meta.env.VITE_API_BASE}/submit`, {
     method: "POST",
     body: JSON.stringify({
       nonce: nonce.toString("hex").padStart(64, "0"),

@@ -108,7 +108,6 @@ const initialState = async (): Promise<State> => {
   const clients: Response[] = [];
 
   timer.on("end", async () => {
-    console.log("updating chain", state.candidateBlock, clients.length);
     if (!state.candidateBlock) {
       console.log("no candidate block");
       timer.reset();
@@ -378,5 +377,5 @@ app.get("/history", async (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
+  console.log(`Backend listening on port ${PORT}`);
 });
