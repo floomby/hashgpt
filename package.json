@@ -14,6 +14,7 @@
     "concurrently": "^8.2.1"
   },
   "scripts": {
+    "build": "yarn workspace common build && yarn workspace frontend build && yarn workspace backend build",
     "dev": "concurrently \"yarn workspace frontend dev\" \"yarn workspace backend dev\" \"yarn workspace common watch\""
   }
 }

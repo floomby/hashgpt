@@ -15,6 +15,7 @@
     "zod": "^3.22.2"
   },
   "scripts": {
+    "build": "tsc",
     "dev": "concurrently \"tsc -w\" \"nodemon dist/server.js\""
   }
 }
