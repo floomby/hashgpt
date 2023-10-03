@@ -38,6 +38,10 @@ export default class Timer extends EventEmitter {
     this.duration = this.initialDuration;
   }
 
+  changeResetDuration(duration: number) {
+    this.initialDuration = duration;
+  }
+
   getTimeRemaining() {
     return this.duration;
   }

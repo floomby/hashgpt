@@ -13,6 +13,7 @@
     "@webgpu/types": "^0.1.34",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "dotenv-expand": "^10.0.0",
     "lucide-react": "^0.279.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

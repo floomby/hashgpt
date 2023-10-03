@@ -7,13 +7,10 @@ import { type Block, hashBlock, ServerMessage } from "common";
 
 import Timer from "./timer.js";
 import { lastState, writeEntry, getChatHistory } from "./db.js";
-import { type LLMState, callLLM } from "./llm.js";
+import { type LLMState, callLlm } from "./llm.js";
 
-// config
-const PORT = 3000;
-const duration = 20 * 1000;
-// just use a file as the "database"
-const dbFile = "./dbfile";
+import env from "./env.js";
+import { enforceAdmin } from "./middleware.js";
 
 const app = express();
 
@@ -102,7 +99,7 @@ type State = {
 const initialState = async (): Promise<State> => {
   const { count, prevHash, prevResponse } = await lastState();
 
-  const timer = new Timer(duration);
+  const timer = new Timer(env.ROUND_TIME * 1000);
   timer.start();
 
   const clients: Response[] = [];
@@ -143,7 +140,7 @@ const initialState = async (): Promise<State> => {
       .toString("hex")
       .padStart(64, "0");
 
-    const response = await callLLM(
+    const response = await callLlm(
       state.candidateBlock.prompt,
       hashString,
       state,
@@ -376,6 +373,28 @@ app.get("/history", async (req: Request, res: Response) => {
   res.status(200).json(entries);
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend listening on port ${PORT}`);
+app.post("/duration", enforceAdmin, (req, res) => {
+  const { duration } = req.body;
+
+  console.log("setting duration to ", duration);
+
+  if (!duration) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  const durationInt = parseInt(duration);
+
+  if (isNaN(durationInt) || durationInt <= 0) {
+    return res
+      .status(400)
+      .json({ error: "duration must be a positive number" });
+  }
+
+  state.timer.changeResetDuration(durationInt * 1000);
+
+  res.status(200).json({ message: "Round duration set" });
+});
+
+app.listen(env.PORT, () => {
+  console.log(`Backend listening on port ${env.PORT}`);
 });

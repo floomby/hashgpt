@@ -4,8 +4,7 @@ Public GPT chat conversation in a blockchain (centralized unfortunately 😞). W
 
 ### Running Dev Server
 
-Put `OPENAI_API_KEY` in `.env` file.
-Put `MOCK_LLM` in `.env` file to mock llm api calls.
+Create `.env` file following the `.env.example` file.
 
 `yarn dev` to start
 

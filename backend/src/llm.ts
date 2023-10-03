@@ -2,11 +2,13 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import { getLastEntries } from "./db.js";
 
-dotenv.config({ path: "../.env" });
+import env from "./env.js";
 
-const mocking = process.env.MOCK_LLM === "true";
+const mocking = env.MOCK_LLM === "true";
 
-const openai = new OpenAI();
+const openai = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+});
 
 // for in flight generation
 export type LLMState = {
@@ -15,7 +17,7 @@ export type LLMState = {
   hash: string;
 };
 
-const mockLLM = (
+const mockLlm = (
   prompt: string,
   hash: string,
   state: { llmState: LLMState },
@@ -34,7 +36,7 @@ const mockLLM = (
         clearInterval(interval);
         resolve(state.llmState.response);
       }
-    }, 500);
+    }, 200);
   });
 };
 
@@ -46,7 +48,7 @@ const getChatHistory = async (): Promise<
     { role: "assistant", content: entry.response },
   ]);
 
-const generateLLM = async (
+const generateLlm = async (
   prompt: string,
   hash: string,
   state: { llmState: LLMState },
@@ -74,4 +76,4 @@ const generateLLM = async (
   return state.llmState.response;
 };
 
-export const callLLM = mocking ? mockLLM : generateLLM;
+export const callLlm = mocking ? mockLlm : generateLlm;
