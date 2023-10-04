@@ -1,8 +1,8 @@
-import dotenv from "dotenv";
 import OpenAI from "openai";
 import { getLastEntries } from "./db.js";
 
 import env from "./env.js";
+import { countTokens } from "./tokenize.js";
 
 const mocking = env.MOCK_LLM === "true";
 
@@ -40,13 +40,40 @@ const mockLlm = (
   });
 };
 
-const getChatHistory = async (): Promise<
-  { role: "user" | "assistant"; content: string }[][]
-> =>
-  (await getLastEntries(4)).map((entry) => [
+const getChatHistory_ = async (
+  entryCount: number
+): Promise<{ role: "user" | "assistant"; content: string }[][]> =>
+  (await getLastEntries(entryCount)).map((entry) => [
     { role: "user", content: entry.prompt },
     { role: "assistant", content: entry.response },
   ]);
+
+const getChatHistory = async (maxTokens: number) => {
+  const history = (await getChatHistory_(5)).flat();
+  const ret: { role: "user" | "assistant"; content: string }[] = [];
+
+  let totalTokens = 0;
+
+  if (history.length === 0) {
+    return [];
+  }
+
+  console.log("chat history", history);
+  let currentCount = countTokens(history[history.length - 1].content);
+
+  while (totalTokens + currentCount < maxTokens) {
+    totalTokens += currentCount;
+    ret.push(history.pop()!);
+    if (history.length === 0) {
+      break;
+    }
+    currentCount = countTokens(history[history.length - 1].content);
+  }
+
+  console.log("chat history", ret);
+
+  return ret;
+};
 
 const generateLlm = async (
   prompt: string,
@@ -58,13 +85,14 @@ const generateLlm = async (
   console.log("generate llm");
   const stream = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
+    max_tokens: 1024,
     messages: [
       {
         role: "system",
         content:
-          "Keep your responses concise. If asked for a lengthy response provide a short answer instead.",
+          "Give good answers and try to be funny if you think of any jokes.",
       },
-      ...(await getChatHistory()).flat(),
+      ...(await getChatHistory(1024)),
       { role: "user", content: prompt },
     ],
     stream: true,

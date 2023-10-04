@@ -6,11 +6,12 @@ import bodyParser from "body-parser";
 import { type Block, hashBlock, ServerMessage } from "common";
 
 import Timer from "./timer.js";
-import { lastState, writeEntry, getChatHistory } from "./db.js";
+import { lastState, writeEntry, getChatHistory, getLastEntries } from "./db.js";
 import { type LLMState, callLlm } from "./llm.js";
 
 import env from "./env.js";
 import { enforceAdmin } from "./middleware.js";
+import { countTokens } from "./tokenize.js";
 
 const app = express();
 
@@ -393,6 +394,13 @@ app.post("/duration", enforceAdmin, (req, res) => {
   state.timer.changeResetDuration(durationInt * 1000);
 
   res.status(200).json({ message: "Round duration set" });
+});
+
+app.get("/debug", (req, res) => {
+  getLastEntries(10).then((entries) => {
+    countTokens(entries[0].response);
+  });
+  res.status(200).json({ message: "debug" });
 });
 
 app.listen(env.PORT, () => {
