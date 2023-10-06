@@ -4,11 +4,12 @@ import { config } from "dotenv";
 config({ path: "../.env" });
 
 const schema = z.object({
-  MOCK_LLM: z.string(),
+  MOCK_LLM: z.coerce.boolean(),
   OPENAI_API_KEY: z.string(),
   ROUND_TIME: z.number().positive().int(),
   PORT: z.number().int().positive().min(1).max(65535),
   ADMIN_TOKEN: z.string(),
+  USE_CORS: z.coerce.boolean(),
 });
 
 const env = {

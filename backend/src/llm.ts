@@ -4,8 +4,6 @@ import { getLastEntries } from "./db.js";
 import env from "./env.js";
 import { countTokens } from "./tokenize.js";
 
-const mocking = env.MOCK_LLM === "true";
-
 const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
@@ -104,4 +102,4 @@ const generateLlm = async (
   return state.llmState.response;
 };
 
-export const callLlm = mocking ? mockLlm : generateLlm;
+export const callLlm = env.MOCK_LLM ? mockLlm : generateLlm;

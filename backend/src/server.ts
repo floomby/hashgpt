@@ -202,7 +202,10 @@ const validateBlockAgainstState = (
 
 const state = await initialState();
 
-app.use(cors());
+if (env.USE_CORS) {
+  app.use(cors());
+}
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
