@@ -267,69 +267,63 @@ const valid256String = (str: string): boolean => {
 };
 
 app.post("/submit", (req: Request, res: Response) => {
-  const { prompt, nonce, prevHash, expectedHash } = req.body as SubmitParams;
+  try {
+    const { prompt, nonce, prevHash, expectedHash } = req.body as SubmitParams;
 
-  // check the parameters are present
-  if (!prompt || !nonce || !prevHash) {
-    return res.status(400).json({ error: "Missing parameters" });
-  }
-
-  // check prompt is a string
-  if (typeof prompt !== "string") {
-    return res.status(400).json({ error: "prompt must be a string" });
-  }
-
-  // check nonce is a hex string of length 64
-  if (!valid256String(nonce)) {
-    return res.status(400).json({ error: "nonce must be a hex string" });
-  }
-
-  // check prevHash is a hex string of length 64
-  if (!valid256String(prevHash)) {
-    return res.status(400).json({ error: "prevHash must be a hex string" });
-  }
-
-  // check expectedHash is a hex string of length 64
-  if (!valid256String(expectedHash)) {
-    return res.status(400).json({ error: "expectedHash must be a hex string" });
-  }
-
-  const nonceBN = new BN(nonce, "hex");
-
-  const hash = hashBlock({
-    prompt,
-    nonce: nonceBN,
-    prevHash,
-    prevResponse: state.prevResponse,
-  });
-
-  // check the expected hash is correct
-  if (hash !== expectedHash) {
-    return res.status(400).json({ error: "Incorrect hash" });
-  }
-
-  if (
-    !validateBlockAgainstState(
-      { prevHash, prevResponse: state.prevResponse },
-      state
-    )
-  ) {
-    return res
-      .status(400)
-      .json({ error: `Invalid block - expected prevHash ${state.prevHash}` });
-  }
-  const hashBN = new BN(hash, "hex");
-
-  if (!state.candidateBlock) {
-    state.candidateBlock = { hash: hashBN, nonce, prompt };
-    res.status(200).json({ message: "Block accepted" });
-
-    // broadcast the new leader
-    for (const client of state.clients) {
-      sendCurrentLeader(client);
+    // check the parameters are present
+    if (!prompt || !nonce || !prevHash) {
+      return res.status(400).json({ error: "Missing parameters" });
     }
-  } else {
-    if (hashBN.lt(state.candidateBlock.hash)) {
+
+    // check prompt is a string
+    if (typeof prompt !== "string") {
+      return res.status(400).json({ error: "prompt must be a string" });
+    }
+
+    // check nonce is a hex string of length 64
+    if (!valid256String(nonce)) {
+      return res.status(400).json({ error: "nonce must be a hex string" });
+    }
+
+    // check prevHash is a hex string of length 64
+    if (!valid256String(prevHash)) {
+      return res.status(400).json({ error: "prevHash must be a hex string" });
+    }
+
+    // check expectedHash is a hex string of length 64
+    if (!valid256String(expectedHash)) {
+      return res
+        .status(400)
+        .json({ error: "expectedHash must be a hex string" });
+    }
+
+    const nonceBN = new BN(nonce, "hex");
+
+    const hash = hashBlock({
+      prompt,
+      nonce: nonceBN,
+      prevHash,
+      prevResponse: state.prevResponse,
+    });
+
+    // check the expected hash is correct
+    if (hash !== expectedHash) {
+      return res.status(400).json({ error: "Incorrect hash" });
+    }
+
+    if (
+      !validateBlockAgainstState(
+        { prevHash, prevResponse: state.prevResponse },
+        state
+      )
+    ) {
+      return res
+        .status(400)
+        .json({ error: `Invalid block - expected prevHash ${state.prevHash}` });
+    }
+    const hashBN = new BN(hash, "hex");
+
+    if (!state.candidateBlock) {
       state.candidateBlock = { hash: hashBN, nonce, prompt };
       res.status(200).json({ message: "Block accepted" });
 
@@ -338,46 +332,64 @@ app.post("/submit", (req: Request, res: Response) => {
         sendCurrentLeader(client);
       }
     } else {
-      return res.status(409).json({
-        error: `Invalid block - hash ${hash} is not less than ${state.candidateBlock.hash
-          .toString("hex")
-          .padStart(64, "0")}`,
-      });
+      if (hashBN.lt(state.candidateBlock.hash)) {
+        state.candidateBlock = { hash: hashBN, nonce, prompt };
+        res.status(200).json({ message: "Block accepted" });
+
+        // broadcast the new leader
+        for (const client of state.clients) {
+          sendCurrentLeader(client);
+        }
+      } else {
+        return res.status(409).json({
+          error: `Invalid block - hash ${hash} is not less than ${state.candidateBlock.hash
+            .toString("hex")
+            .padStart(64, "0")}`,
+        });
+      }
     }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 app.get("/history", async (req: Request, res: Response) => {
-  const { from, to } = req.query as { from: string; to: string };
+  try {
+    const { from, to } = req.query as { from: string; to: string };
 
-  if (!from && !to) {
-    // use default values
-    const entries = await getChatHistory(state.count - 4, state.count);
-    return res.status(200).json(entries);
+    if (!from && !to) {
+      // use default values
+      const entries = await getChatHistory(state.count - 4, state.count);
+      return res.status(200).json(entries);
+    }
+
+    if (!from || !to) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    const fromInt = parseInt(from);
+
+    if (isNaN(fromInt)) {
+      return res.status(400).json({ error: "from must be a number" });
+    }
+
+    const toInt = parseInt(to);
+
+    if (isNaN(toInt)) {
+      return res.status(400).json({ error: "to must be a number" });
+    }
+
+    const entries = await getChatHistory(fromInt, toInt);
+
+    res.status(200).json(entries);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Internal server error" });
   }
-
-  if (!from || !to) {
-    return res.status(400).json({ error: "Missing parameters" });
-  }
-
-  const fromInt = parseInt(from);
-
-  if (isNaN(fromInt)) {
-    return res.status(400).json({ error: "from must be a number" });
-  }
-
-  const toInt = parseInt(to);
-
-  if (isNaN(toInt)) {
-    return res.status(400).json({ error: "to must be a number" });
-  }
-
-  const entries = await getChatHistory(fromInt, toInt);
-
-  res.status(200).json(entries);
 });
 
-app.post("/duration", enforceAdmin, (req, res) => {
+app.post("/duration", enforceAdmin, (req: Request, res: Response) => {
   const { duration } = req.body;
 
   console.log("setting duration to ", duration);
@@ -399,11 +411,33 @@ app.post("/duration", enforceAdmin, (req, res) => {
   res.status(200).json({ message: "Round duration set" });
 });
 
-app.get("/debug", (req, res) => {
-  getLastEntries(10).then((entries) => {
-    countTokens(entries[0].response);
-  });
-  res.status(200).json({ message: "debug" });
+app.get("/chain", async (req: Request, res: Response) => {
+  try {
+    const { index, count } = req.query as { index: string; count: string };
+
+    if (!index || !count) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    const indexInt = parseInt(index);
+
+    if (isNaN(indexInt)) {
+      return res.status(400).json({ error: "index must be a number" });
+    }
+
+    const countInt = parseInt(count);
+
+    if (isNaN(countInt)) {
+      return res.status(400).json({ error: "count must be a number" });
+    }
+
+    const entries = await getLastEntries(countInt, indexInt);
+
+    res.status(200).json(entries);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.listen(env.PORT, () => {

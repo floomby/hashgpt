@@ -79,11 +79,13 @@ export const lastState = async () =>
     );
   });
 
-export const getLastEntries = async (count: number) => {
+export const getLastEntries = async (count: number, index?: number) => {
   return new Promise<Entry[]>((resolve, reject) => {
     db.all(
-      "SELECT * FROM entries ORDER BY id DESC LIMIT ?",
-      [count],
+      index !== undefined
+        ? "SELECT * FROM entries WHERE id >= ? AND id < ? ORDER BY id DESC"
+        : "SELECT * FROM entries ORDER BY id DESC LIMIT ?",
+      index !== undefined ? [index, index + count] : [count],
       (err, rows: EntryRow[]) => {
         if (err) {
           reject(err);
